@@ -2,6 +2,8 @@
 backup/
 node_modules/
 venv/
+.next
+out/
 
 # Environment files
 .env
