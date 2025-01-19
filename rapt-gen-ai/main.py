@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.encoders import jsonable_encoder
 from typing import List
 from models.metadata import Metadata
 from services.pinecone_service import batch_upload_texts, delete_texts_from_index, index_texts, query_index
@@ -7,6 +8,17 @@ import json
 import numpy as np
 
 app = FastAPI()
+
+
+def sanitize_results(results):
+    return [
+        {
+            "id": result["id"],
+            "metadata": result["metadata"],
+            "score": result["score"]
+        }
+        for result in results
+    ]
 
 
 @app.post("/index_texts/")
@@ -25,9 +37,10 @@ async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = Fil
 
 @app.post("/query_index/")
 async def query_index_endpoint(query: str, top_k: int = 5):
-    results = np.array(query_index(query, top_k))
+    raw_results = query_index(query, top_k)
 
-    return {"results": results.tolist()}
+    sanitized_results = sanitize_results(raw_results)
+    return {"results": sanitized_results}
 
 
 @app.post("/delete_texts/")
