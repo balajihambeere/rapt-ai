@@ -3,9 +3,11 @@ pip install openai
 pip install pinecone-client
 pip install tqdm
 
-pip install uvicorn python-dotenv openai pinecone-client pydantic fastapi
+pip install uvicorn python-dotenv 
 
 pip install PyPDF2
+
+pip install "fastapi[standard]"
 ```
 
 

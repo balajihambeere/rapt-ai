@@ -1,13 +1,13 @@
-# config.py
+
 import os
-from pinecone import Pinecone
+from pinecone import Pinecone, ServerlessSpec
 import openai
 
 
 def get_pinecone_index():
     # Initialize Pinecone client
     pc = Pinecone(
-        api_key=os.getenv("PINECONE_API_KEY")
+        api_key="PINECONE_API_KEY"
     )
 
     index_name = "raptai-search"
@@ -17,7 +17,11 @@ def get_pinecone_index():
         pc.create_index(
             name=index_name,
             dimension=1536,  # OpenAI ada-002 embedding dimension
-            metric='cosine'
+            metric='cosine',
+            spec=ServerlessSpec(
+                cloud='aws',
+                region='us-east-1'  # or your preferred AWS region
+            )
         )
 
     # Get the index
@@ -25,7 +29,7 @@ def get_pinecone_index():
 
 
 def initialize_openai():
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    openai.api_key = "OPENAI_API_KEY"
     return openai
 
 
