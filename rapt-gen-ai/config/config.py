@@ -1,7 +1,7 @@
 
 import os
 from pinecone import Pinecone, ServerlessSpec
-import openai
+from openai import OpenAI
 
 
 def get_pinecone_index():
@@ -29,8 +29,9 @@ def get_pinecone_index():
 
 
 def initialize_openai():
-    openai.api_key = "OPENAI_API_KEY"
-    return openai
+    return OpenAI(
+        api_key="OPENAI_API_KEY"
+    )
 
 
 # Export the functions

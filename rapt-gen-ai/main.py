@@ -1,25 +1,33 @@
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from typing import List
 from models.metadata import Metadata
 from services.pinecone_service import batch_upload_texts, delete_texts_from_index, index_texts, query_index
+import json
+import numpy as np
 
 app = FastAPI()
 
 
 @app.post("/index_texts/")
-async def index_texts_endpoint(metadata: Metadata, file: UploadFile = File(...)):
+async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = File(...)):
+    # Parse the metadata string into a dictionary
+    metadata_dict = json.loads(metadata)
+    # Convert to your metadata model
+    metadata_obj = Metadata(**metadata_dict)
+
     pdf_path = f"/tmp/{file.filename}"
     with open(pdf_path, "wb") as f:
         f.write(await file.read())
-    num_indexed = index_texts(pdf_path, metadata.model_dump())
+    num_indexed = index_texts(pdf_path, metadata_obj.model_dump())
     return {"indexed_paragraphs": num_indexed}
 
 
 @app.post("/query_index/")
 async def query_index_endpoint(query: str, top_k: int = 5):
-    results = query_index(query, top_k)
-    return {"results": results}
+    results = np.array(query_index(query, top_k))
+
+    return {"results": results.tolist()}
 
 
 @app.post("/delete_texts/")

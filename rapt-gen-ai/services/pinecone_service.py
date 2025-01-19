@@ -1,9 +1,22 @@
+import traceback
 from PyPDF2 import PdfReader
-
+from typing import List, Union
+import time
 from config.config import get_pinecone_index, initialize_openai
+import sys
+sys.setrecursionlimit(10000)
 
-openai = initialize_openai()
+
+def debug_log(message):
+    print(message)
+    traceback.print_stack()
+
+
+client = initialize_openai()
 pinecone_index = get_pinecone_index()
+
+# Define constants for the Pinecone index, namespace, and engine
+ENGINE = 'text-embedding-3-small'
 
 
 def extract_text_from_pdf(pdf_path):
@@ -14,21 +27,44 @@ def extract_text_from_pdf(pdf_path):
         text += page.extract_text()
     return text
 
+# Function to get embeddings for a list of texts using the OpenAI API
 
-def generate_embeddings(texts):
-    """Generates embeddings for a list of texts using OpenAI's API."""
-    response = openai.Embedding.create(
+
+def get_embeddings(texts, engine=ENGINE):
+    # Validate input
+    if not isinstance(texts, list) or not all(isinstance(t, str) for t in texts):
+        raise ValueError("Input texts must be a list of strings.")
+
+    # Avoid nested calls
+    if any(isinstance(t, list) for t in texts):
+        raise ValueError("Nested lists are not allowed.")
+
+    # Create embeddings for the input texts using the specified engine
+    response = client.embeddings.create(
         input=texts,
-        model="text-embedding-ada-002"
+        model=engine
     )
-    return [item['embedding'] for item in response['data']]
+
+    # Extract and return the list of embeddings from the response
+    return [d.embedding for d in list(response.data)]
+
+# Function to get embedding for a single text using the OpenAI API
+
+
+# def get_embedding(text, engine=ENGINE):
+#     # Use the get_embeddings function to get the embedding for a single text
+#     return get_embeddings([text], engine)[0]
 
 
 def index_texts(pdf_path, metadata):
     """Indexes texts from a PDF file into Pinecone."""
     text = extract_text_from_pdf(pdf_path)
-    paragraphs = text.split("\n")  # Splitting into smaller chunks if needed
-    embeddings = generate_embeddings(paragraphs)
+    paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
+
+    # print('paragraphs', paragraphs)
+    embeddings = get_embeddings(paragraphs, engine=ENGINE)
+
+    # time.sleep(10)
 
     # Prepare data for upserting
     data = [
@@ -46,9 +82,10 @@ def index_texts(pdf_path, metadata):
 
 def query_index(query, top_k=5):
     """Queries the Pinecone index for similar texts."""
-    query_embedding = generate_embeddings([query])[0]
+    query_embedding = get_embeddings([query])[0]
+
     results = pinecone_index.query(
-        query_embedding, top_k=top_k, include_metadata=True)
+        vector=query_embedding, top_k=top_k, include_metadata=True)
     return results["matches"]
 
 
