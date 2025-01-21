@@ -6,6 +6,8 @@ from models.metadata import Metadata
 from services.pinecone_service import batch_upload_texts, delete_texts_from_index, index_texts, query_index
 import json
 import numpy as np
+from models.OpenAIChatLLMModel import OpenAIChatLLMModel
+from models.RagBotModel import RagBotModel
 
 app = FastAPI()
 
@@ -39,8 +41,12 @@ async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = Fil
 async def query_index_endpoint(query: str, top_k: int = 5):
     raw_results = query_index(query, top_k)
 
-    sanitized_results = sanitize_results(raw_results)
-    return {"results": sanitized_results}
+    # sanitized_results = sanitize_results(raw_results)
+
+    openai_rag = RagBotModel(llm=OpenAIChatLLMModel(
+        temperature=0, model='gpt-4o-mini'), stop_pattern=['[END]'], verbose=False)
+    response = openai_rag.run(query)
+    return {"results": response}
 
 
 @app.post("/delete_texts/")
