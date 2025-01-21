@@ -1,15 +1,6 @@
-import traceback
-from PyPDF2 import PdfReader
-from typing import List, Union
-import time
+import os
+import PyPDF2
 from config.config import get_pinecone_index, initialize_openai
-import sys
-sys.setrecursionlimit(10000)
-
-
-def debug_log(message):
-    print(message)
-    traceback.print_stack()
 
 
 client = initialize_openai()
@@ -19,17 +10,46 @@ pinecone_index = get_pinecone_index()
 ENGINE = 'text-embedding-3-small'
 
 
-def extract_text_from_pdf(pdf_path):
-    """Extracts text from a PDF file."""
-    reader = PdfReader(pdf_path)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text()
-    return text
+def extract_text_from_pdf(file_path):
+    """
+    Extracts text from a PDF file, handling various edge cases as specified in the user stories.
+
+    :param file_path: Path to the PDF file
+    :return: Extracted text as a string
+    :raises: ValueError, FileNotFoundError, or RuntimeError depending on the issue
+    """
+    # Check if file exists
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"The file at path '{file_path}' does not exist.")
+
+    # Check if the file is a valid PDF
+    if not file_path.lower().endswith('.pdf'):
+        raise ValueError(f"The file '{file_path}' is not a valid PDF.")
+
+    try:
+        # Open the PDF file
+        with open(file_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+
+            # Check if PDF contains any pages
+            if not reader.pages:
+                return ""  # Return an empty string for PDFs with no text
+
+            # Extract text from all pages
+            extracted_text = ""
+            for page in reader.pages:
+                extracted_text += page.extract_text() or ""
+
+            return extracted_text
+
+    except PyPDF2.errors.PdfReadError:
+        raise ValueError(f"The file '{file_path}' is not a readable PDF.")
+
+    except MemoryError:
+        raise RuntimeError("The file is too large to process with the available memory.")
+
 
 # Function to get embeddings for a list of texts using the OpenAI API
-
-
 def get_embeddings(texts, engine=ENGINE):
     # Validate input
     if not isinstance(texts, list) or not all(isinstance(t, str) for t in texts):
@@ -48,12 +68,6 @@ def get_embeddings(texts, engine=ENGINE):
     # Extract and return the list of embeddings from the response
     return [d.embedding for d in list(response.data)]
 
-# Function to get embedding for a single text using the OpenAI API
-
-
-# def get_embedding(text, engine=ENGINE):
-#     # Use the get_embeddings function to get the embedding for a single text
-#     return get_embeddings([text], engine)[0]
 
 
 def index_texts(pdf_path, metadata):

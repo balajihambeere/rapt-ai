@@ -2,37 +2,54 @@
 import os
 from pinecone import Pinecone, ServerlessSpec
 from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-def get_pinecone_index():
-    # Initialize Pinecone client
-    pc = Pinecone(
-        api_key="pcsk_6XfhvG_NKcbiSxh1fCZN7wCC3o92VA3kgN5PPsGLBdTuMyEYzVkGxV2spg46YczYdy5AiZ"
-    )
-
-    index_name = "raptai-search"
-
-    # Check if index exists, if not create it
-    if index_name not in pc.list_indexes().names():
-        pc.create_index(
-            name=index_name,
-            dimension=1536,  # OpenAI ada-002 embedding dimension
-            metric='cosine',
-            spec=ServerlessSpec(
-                cloud='aws',
-                region='us-east-1'  # or your preferred AWS region
-            )
+def get_pinecone_index(api_key=None):
+    if api_key is None:
+        api_key = os.environ.get('PINECONE_API_KEY')
+        if api_key is None:
+            raise ValueError("API key is required")
+        
+    try:
+        # Initialize Pinecone client
+        pc = Pinecone(
+            api_key=api_key
         )
 
-    # Get the index
-    return pc.Index(index_name)
+        index_name = "raptai-search"
+
+        # Check if index exists, if not create it
+        if index_name not in pc.list_indexes().names():
+            pc.create_index(
+                name=index_name,
+                dimension=1536,  # OpenAI ada-002 embedding dimension
+                metric='cosine',
+                spec=ServerlessSpec(
+                    cloud='aws',
+                    region='us-east-1'  # or your preferred AWS region
+                )
+            )
+
+        # Get the index
+        return pc.Index(index_name)
+    except Exception as e:
+        print(f"An error occurred while initializing Pinecone index: {e}")
+        raise
 
 
-def initialize_openai():
-    return OpenAI(
-        api_key="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"
-    )
-
+def initialize_openai(api_key=None):
+    if api_key is None:
+        api_key = os.environ.get('OPENAI_API_KEY')
+        if api_key is None:
+            raise ValueError("API key is required")
+    
+    try:
+        return OpenAI(api_key=api_key)
+    except Exception as e:
+        raise ValueError("Invalid API key") from e
 
 # Export the functions
 __all__ = ['get_pinecone_index', 'initialize_openai']
