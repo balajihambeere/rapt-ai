@@ -1,4 +1,4 @@
-
+from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.encoders import jsonable_encoder
 from typing import List
@@ -10,6 +10,21 @@ from models.OpenAIChatLLMModel import OpenAIChatLLMModel
 from models.RagBotModel import RagBotModel
 
 app = FastAPI()
+
+conversations = {}
+
+
+class ConversationRequest(BaseModel):
+    text: str
+    temperature: float = 0.1
+    threshold: float = 0.3
+    namespace: str = "default"
+    conversation_id: str = None
+
+
+class ConversationResponse(BaseModel):
+    response: str
+    conversation_id: str
 
 
 def sanitize_results(results):
@@ -38,15 +53,24 @@ async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = Fil
 
 
 @app.post("/query_index/")
-async def query_index_endpoint(query: str, top_k: int = 5):
-    raw_results = query_index(query, top_k)
+async def query_index_endpoint(request: ConversationRequest):
+    message = request.text
+    temperature = request.temperature
+    threshold = request.threshold
+    print('Conversation id:', request.conversation_id)
+    # Generate a new conversation_id if not provided
+    if request.conversation_id is None:
+        request.conversation_id = str(uuid.uuid4())
 
-    # sanitized_results = sanitize_results(raw_results)
+    if request.conversation_id not in conversations:
+        conversations[request.conversation_id] = RagBotModel(
+            llm=OpenAIChatLLMModel(
+                temperature=temperature, model='gpt-4o'), stop_pattern=['[END]'], verbose=True,
+            threshold=threshold)
+    bot = conversations[request.conversation_id]
+    response = bot.run(message)
 
-    openai_rag = RagBotModel(llm=OpenAIChatLLMModel(
-        temperature=0, model='gpt-4o-mini'), stop_pattern=['[END]'], verbose=False)
-    response = openai_rag.run(query)
-    return {"results": response}
+    return ConversationResponse(response=response, conversation_id=request.conversation_id)
 
 
 @app.post("/delete_texts/")

@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import uuid
 
+
 # Initialize session state variables
 if 'conversation_id' not in st.session_state:
     st.session_state['conversation_id'] = str(uuid.uuid4())
@@ -13,12 +14,12 @@ def get_bot_response(user_input):
     print(st.session_state['conversation_id'])
     payload = {
         "text": user_input,
-        "temperature": 0.1,
+        "temperature": 0.0,
         "threshold": 0.3,
         "conversation_id": st.session_state['conversation_id']
     }
     response = requests.post(
-        "http://localhost:8000/process_text", json=payload)
+        "http://localhost:8000/query_index", json=payload)
     if response.status_code == 200:
         data = response.json()
         bot_response = data['response']
@@ -29,7 +30,7 @@ def get_bot_response(user_input):
         return "Error: API request failed."
 
 
-st.title("🤖 Chat with the Bot")
+st.title("🤖 Chat with rapt-AI Bot")
 
 # Display the chat messages
 for chat in st.session_state['history']:
