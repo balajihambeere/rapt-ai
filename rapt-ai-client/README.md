@@ -1,1 +1,0 @@
-# Rapt-AI Retrieval-Augmented Generation
