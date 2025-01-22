@@ -1,8 +1,9 @@
 from pydantic import BaseModel
 from typing import Dict, Optional, Any
 from typing import List, Dict, Tuple
-from services.pinecone_service import query_index
 import datetime
+
+from doc_handler.document_retrieval import DocumentRetrieval
 
 
 # Prompt Template for RAG Bot
@@ -36,9 +37,10 @@ class RagBotModel(BaseModel):
     def run(self, query: str) -> str:
         # Log user input
         self.user_inputs.append(query)
+        document_retrieval = DocumentRetrieval()
 
         # Query Pinecone
-        matches = query_index(query)
+        matches = document_retrieval.query_index(query)
 
         if matches:
             # loop through matches and add to contexts
@@ -48,7 +50,6 @@ class RagBotModel(BaseModel):
                 self.contexts.append(match["metadata"]["text"])
             top_context = self.contexts
 
-            # print('top_context', top_context)
             # get score which is greater than threshold
             context_score = matches[0]["score"]
             context_thought = "This context has sufficient information to answer the question."
@@ -67,11 +68,6 @@ class RagBotModel(BaseModel):
             assistant_response="",
         )
 
-        if self.verbose:
-            print("Generated Prompt:")
-            print(prompt)
-
-        print('prompt', prompt)
         # Generate response
         response = self.llm.generate(prompt, stop=["[END]"])
         self.ai_responses.append(response)

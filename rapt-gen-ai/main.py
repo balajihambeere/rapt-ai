@@ -1,13 +1,13 @@
 from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.encoders import jsonable_encoder
 from typing import List
 from models.metadata import Metadata
-from services.pinecone_service import batch_upload_texts, delete_texts_from_index, index_texts, query_index
 import json
 import numpy as np
 from models.OpenAIChatLLMModel import OpenAIChatLLMModel
 from models.RagBotModel import RagBotModel
+from doc_handler.document_retrieval import DocumentRetrieval  # Add this import
+
 
 app = FastAPI()
 
@@ -44,11 +44,14 @@ async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = Fil
     metadata_dict = json.loads(metadata)
     # Convert to your metadata model
     metadata_obj = Metadata(**metadata_dict)
+    
 
     pdf_path = f"/tmp/{file.filename}"
     with open(pdf_path, "wb") as f:
         f.write(await file.read())
-    num_indexed = index_texts(pdf_path, metadata_obj.model_dump())
+    document_retrieval = DocumentRetrieval()
+    num_indexed = document_retrieval.index_texts(
+        pdf_path, metadata_obj.model_dump())
     return {"indexed_paragraphs": num_indexed}
 
 
@@ -57,7 +60,6 @@ async def query_index_endpoint(request: ConversationRequest):
     message = request.text
     temperature = request.temperature
     threshold = request.threshold
-    print('Conversation id:', request.conversation_id)
     # Generate a new conversation_id if not provided
     if request.conversation_id is None:
         request.conversation_id = str(uuid.uuid4())
@@ -73,20 +75,20 @@ async def query_index_endpoint(request: ConversationRequest):
     return ConversationResponse(response=response, conversation_id=request.conversation_id)
 
 
-@app.post("/delete_texts/")
-async def delete_texts_endpoint(text_ids: List[str]):
-    delete_texts_from_index(text_ids)
-    return {"deleted_texts": text_ids}
+# @app.post("/delete_texts/")
+# async def delete_texts_endpoint(text_ids: List[str]):
+#     delete_texts_from_index(text_ids)
+#     return {"deleted_texts": text_ids}
 
 
-@app.post("/batch_upload_texts/")
-async def batch_upload_texts_endpoint(metadata_list: List[Metadata], files: List[UploadFile] = File(...)):
-    pdf_paths = []
-    for file in files:
-        pdf_path = f"/tmp/{file.filename}"
-        with open(pdf_path, "wb") as f:
-            f.write(await file.read())
-        pdf_paths.append(pdf_path)
-    total = batch_upload_texts(
-        pdf_paths, [metadata.model_dump() for metadata in metadata_list])
-    return {"batch_uploaded_paragraphs": total}
+# @app.post("/batch_upload_texts/")
+# async def batch_upload_texts_endpoint(metadata_list: List[Metadata], files: List[UploadFile] = File(...)):
+#     pdf_paths = []
+#     for file in files:
+#         pdf_path = f"/tmp/{file.filename}"
+#         with open(pdf_path, "wb") as f:
+#             f.write(await file.read())
+#         pdf_paths.append(pdf_path)
+#     total = batch_upload_texts(
+#         pdf_paths, [metadata.model_dump() for metadata in metadata_list])
+#     return {"batch_uploaded_paragraphs": total}

@@ -1,14 +1,20 @@
 import os
 from typing import List
 from datetime import datetime
+import time
 import PyPDF2
 from tenacity import retry, stop_after_attempt, wait_exponential
-from config.config import get_pinecone_index, get_openai_client
-from pdf_indexer.exceptions import EmbeddingGenerationError, MetadataValidationError, PDFProcessingError, PineconeUpsertError
-from pdf_indexer.models import IndexingMetadata
+from config.config import get_openai_client, get_pinecone_index
+
+from doc_handler.exceptions import EmbeddingGenerationError, MetadataValidationError, PDFProcessingError, PineconeUpsertError
+from doc_handler.models import IndexingResult
+from models.metadata import Metadata
 
 
-class PDFIndexer:
+class DocumentRetrieval:
+    def __init__(self):
+        # Initialize your document retrieval system
+        pass
 
     def validate_pdf(self, file_path: str) -> None:
         """Validate if the file is a valid PDF."""
@@ -56,7 +62,7 @@ class PDFIndexer:
             for i in range(0, len(texts), batch_size):
                 batch = texts[i:i + batch_size]
                 openai_client = get_openai_client()
-                response = openai_client.Embedding.create(
+                response = openai_client.embeddings.create(
                     input=batch,
                     model="text-embedding-ada-002"
                 )
@@ -67,35 +73,34 @@ class PDFIndexer:
             raise EmbeddingGenerationError(
                 f"Error generating embeddings: {str(e)}")
 
-    def validate_metadata(self, metadata: IndexingMetadata) -> None:
+    def validate_metadata(self, metadata: Metadata) -> None:
         """Validate the provided metadata."""
-        if not metadata.document_id:
+        if not metadata['document_id']:
             raise MetadataValidationError("document_id is required")
 
-        if not metadata.date_uploaded:
+        if not metadata['date_uploaded']:
             raise MetadataValidationError("date_uploaded is required")
 
-        if not isinstance(metadata.date_uploaded, datetime):
-            raise MetadataValidationError(
-                "date_uploaded must be a datetime object")
+        # if not isinstance(metadata['date_uploaded'], datetime):
+        #     raise MetadataValidationError(
+        #         "date_uploaded must be a datetime object")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     def upsert_to_pinecone(self, texts: List[str], embeddings: List[List[float]],
-                           metadata: IndexingMetadata) -> None:
+                           metadata: Metadata) -> None:
         """Upsert the embeddings and metadata to Pinecone."""
         try:
             vectors = []
-            base_metadata = metadata.to_dict()
 
             for i, (text, embedding) in enumerate(zip(texts, embeddings)):
                 vector_metadata = {
-                    **base_metadata,
+                    **metadata,
                     "text": text,
                     "paragraph_id": i
                 }
 
                 vectors.append({
-                    "id": f"{metadata.document_id}_p{i}",
+                    "id": f"{metadata["document_id"]}_p{i}",
                     "values": embedding,
                     "metadata": vector_metadata
                 })
@@ -110,7 +115,7 @@ class PDFIndexer:
         except Exception as e:
             raise PineconeUpsertError(f"Error upserting to Pinecone: {str(e)}")
 
-    def index_texts(self, file_path: str, metadata: IndexingMetadata) -> int:
+    def index_texts(self, file_path: str, metadata: Metadata) -> int:
         """Main function to index texts from a PDF file into Pinecone."""
         try:
             # Validate inputs
@@ -135,3 +140,13 @@ class PDFIndexer:
             raise e
         except Exception as e:
             raise Exception(f"Unexpected error during indexing: {str(e)}")
+
+    def query_index(self, query, top_k=5):
+        """Queries the Pinecone index for similar texts."""
+        query_embedding = self.generate_embeddings([query])[0]
+
+        pinecone_index = get_pinecone_index()
+
+        results = pinecone_index.query(
+            vector=query_embedding, top_k=top_k, include_metadata=True)
+        return results["matches"]

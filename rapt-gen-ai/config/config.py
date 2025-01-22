@@ -12,7 +12,7 @@ def get_pinecone_index(api_key=None):
         api_key = os.environ.get('PINECONE_API_KEY')
         if api_key is None:
             raise ValueError("API key is required")
-        
+
     try:
         # Initialize Pinecone client
         pc = Pinecone(
@@ -40,16 +40,17 @@ def get_pinecone_index(api_key=None):
         raise
 
 
-def initialize_openai(api_key=None):
+def get_openai_client(api_key=None):
     if api_key is None:
         api_key = os.environ.get('OPENAI_API_KEY')
         if api_key is None:
             raise ValueError("API key is required")
-    
+
     try:
         return OpenAI(api_key=api_key)
     except Exception as e:
         raise ValueError("Invalid API key") from e
 
+
 # Export the functions
-__all__ = ['get_pinecone_index', 'initialize_openai']
+__all__ = ['get_pinecone_index', 'get_openai_client']
