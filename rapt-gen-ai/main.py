@@ -92,3 +92,7 @@ async def query_index_endpoint(request: ConversationRequest):
 #     total = batch_upload_texts(
 #         pdf_paths, [metadata.model_dump() for metadata in metadata_list])
 #     return {"batch_uploaded_paragraphs": total}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8100)
