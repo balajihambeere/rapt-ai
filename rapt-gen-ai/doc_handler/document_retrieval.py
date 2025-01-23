@@ -98,7 +98,6 @@ class DocumentRetrieval:
                     "text": text,
                     "paragraph_id": i
                 }
-
                 vectors.append({
                     "id": f"{metadata["document_id"]}_p{i}",
                     "values": embedding,
