@@ -25,7 +25,7 @@ def get_pinecone_index(api_key=None):
         if index_name not in pc.list_indexes().names():
             pc.create_index(
                 name=index_name,
-                dimension=1536,  # OpenAI ada-002 embedding dimension
+                dimension=1536,
                 metric='cosine',
                 spec=ServerlessSpec(
                     cloud='aws',
