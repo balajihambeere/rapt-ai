@@ -7,6 +7,8 @@ import numpy as np
 from models.OpenAIChatLLMModel import OpenAIChatLLMModel
 from models.RagBotModel import RagBotModel
 from doc_handler.document_retrieval import DocumentRetrieval  # Add this import
+import os  # Add this import
+from datetime import datetime  # Add this import
 
 
 app = FastAPI()
@@ -42,9 +44,16 @@ def sanitize_results(results):
 async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = File(...)):
     # Parse the metadata string into a dictionary
     metadata_dict = json.loads(metadata)
+    
     # Convert to your metadata model
     metadata_obj = Metadata(**metadata_dict)
-    
+    if 'date_uploaded' not in metadata_dict:
+        metadata_dict['date_uploaded'] = datetime.now().isoformat()
+    metadata_obj = Metadata(**metadata_dict)
+    if not metadata_obj.date_uploaded:
+        metadata_obj.date_uploaded = datetime.now().isoformat()
+    # Ensure the /tmp directory exists
+    os.makedirs("/tmp", exist_ok=True)
 
     pdf_path = f"/tmp/{file.filename}"
     with open(pdf_path, "wb") as f:

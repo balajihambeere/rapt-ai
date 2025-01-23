@@ -6,7 +6,7 @@ import json
 
 
 def upload_to_api(file, metadata):
-    url = "http://127.0.0.1:8000/index_texts/"
+    url = "http://localhost:8100/index_texts/"
 
     # Create the files and data dictionary for the request
     files = {

@@ -5,6 +5,9 @@ import time
 import PyPDF2
 from tenacity import retry, stop_after_attempt, wait_exponential
 from config.config import get_openai_client, get_pinecone_index
+import spacy
+import pytesseract
+from PIL import Image
 
 from doc_handler.exceptions import EmbeddingGenerationError, MetadataValidationError, PDFProcessingError, PineconeUpsertError
 from doc_handler.models import IndexingResult
@@ -14,7 +17,8 @@ from models.metadata import Metadata
 class DocumentRetrieval:
     def __init__(self):
         # Initialize your document retrieval system
-        pass
+        self.nlp = spacy.load("en_core_web_sm")  # Load spaCy model for NER
+        pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'  # Path to tesseract executable
 
     def validate_pdf(self, file_path: str) -> None:
         """Validate if the file is a valid PDF."""
@@ -52,6 +56,40 @@ class DocumentRetrieval:
             raise PDFProcessingError(
                 f"Error extracting text from PDF: {str(e)}")
 
+    def extract_text_with_ocr(self, file_path: str) -> List[str]:
+        """Extract text from images in PDF using OCR."""
+        try:
+            with open(file_path, 'rb') as file:
+                reader = PyPDF2.PdfReader(file)
+                paragraphs = []
+
+                for page_num, page in enumerate(reader.pages):
+                    text = page.extract_text()
+                    if not text:
+                        # If no text is found, use OCR
+                        page_image = self.convert_pdf_page_to_image(file_path, page_num)
+                        text = pytesseract.image_to_string(page_image)
+                    
+                    if text:
+                        page_paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+                        paragraphs.extend(page_paragraphs)
+
+                return paragraphs
+        except Exception as e:
+            raise PDFProcessingError(f"Error extracting text from PDF: {str(e)}")
+
+    def convert_pdf_page_to_image(self, file_path: str, page_num: int) -> Image:
+        """Convert a specific page of a PDF to an image."""
+        from pdf2image import convert_from_path
+        images = convert_from_path(file_path, first_page=page_num+1, last_page=page_num+1)
+        return images[0]
+
+    def perform_ner(self, text: str) -> List[str]:
+        """Perform Named Entity Recognition (NER) on the given text."""
+        doc = self.nlp(text)
+        entities = [(ent.text, ent.label_) for ent in doc.ents]
+        return entities
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for the given texts using OpenAI's API."""
@@ -86,8 +124,7 @@ class DocumentRetrieval:
         #         "date_uploaded must be a datetime object")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    def upsert_to_pinecone(self, texts: List[str], embeddings: List[List[float]],
-                           metadata: Metadata) -> None:
+    def upsert_to_pinecone(self, texts: List[str], embeddings: List[List[float]], metadata: Metadata) -> None:
         """Upsert the embeddings and metadata to Pinecone."""
         try:
             vectors = []
@@ -99,7 +136,7 @@ class DocumentRetrieval:
                     "paragraph_id": i
                 }
                 vectors.append({
-                    "id": f"{metadata["document_id"]}_p{i}",
+                    "id": f"{metadata['document_id']}_p{i}",
                     "values": embedding,
                     "metadata": vector_metadata
                 })
@@ -122,9 +159,14 @@ class DocumentRetrieval:
             self.validate_metadata(metadata)
 
             # Extract text
-            paragraphs = self.extract_text(file_path)
+            paragraphs = self.extract_text_with_ocr(file_path)
             if not paragraphs:
                 return 0
+
+            # Perform NER on extracted text
+            for paragraph in paragraphs:
+                entities = self.perform_ner(paragraph)
+                print(f"Entities in paragraph: {entities}")
 
             # Generate embeddings
             embeddings = self.generate_embeddings(paragraphs)
