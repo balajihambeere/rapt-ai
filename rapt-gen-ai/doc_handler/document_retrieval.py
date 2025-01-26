@@ -9,6 +9,7 @@ import spacy
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter
 from pdf2image import convert_from_path
+import numpy as np
 import concurrent.futures
 import easyocr
 
@@ -22,6 +23,32 @@ class DocumentRetrieval:
         # Initialize EasyOCR reader
         self.reader = easyocr.Reader(['en']) 
 
+    def index_texts(self, file_path: str, metadata: Metadata) -> int:
+        try:
+            self.validate_pdf(file_path)
+            self.validate_metadata(metadata)
+            paragraphs = self.extract_text_with_easyocr(file_path)
+            if not paragraphs:
+                return 0
+            for paragraph in paragraphs:
+                entities = self.perform_ner(paragraph)
+                print(f"Entities in paragraph: {entities}")
+            embeddings = self.generate_embeddings(paragraphs)
+            self.upsert_to_pinecone(paragraphs, embeddings, metadata)
+            return len(paragraphs)
+        except (PDFProcessingError, MetadataValidationError,
+                EmbeddingGenerationError, PineconeUpsertError) as e:
+            raise e
+        except Exception as e:
+            raise Exception(f"Unexpected error during indexing: {str(e)}")
+        
+    def query_index(self, query, top_k=5):
+        query_embedding = self.generate_embeddings([query])[0]
+        pinecone_index = get_pinecone_index()
+        results = pinecone_index.query(
+            vector=query_embedding, top_k=top_k, include_metadata=True)
+        return results["matches"]    
+    
     def validate_pdf(self, file_path: str) -> None:
         if not os.path.exists(file_path):
             raise PDFProcessingError(f"File not found: {file_path}")
@@ -88,8 +115,10 @@ class DocumentRetrieval:
             images = convert_from_path(file_path, dpi=300)
 
             for image in images:
-                # Perform OCR on each image
-                results = self.reader.readtext(image)
+                # Convert PIL image to numpy array (required by EasyOCR)
+                image_np = np.array(image)
+                # Perform OCR on the image
+                results = self.reader.readtext(image_np)
                 # Extract text from OCR results
                 page_text = " ".join([result[1] for result in results])
                 if page_text:
@@ -99,7 +128,7 @@ class DocumentRetrieval:
             return paragraphs
         except Exception as e:
             raise PDFProcessingError(f"Error extracting text from PDF using EasyOCR: {str(e)}")
-        
+            
     def process_image_with_ocr(self, image: Image) -> List[str]:
         """Process a single image with OCR."""
         try:
@@ -171,29 +200,23 @@ class DocumentRetrieval:
         except Exception as e:
             raise PineconeUpsertError(f"Error upserting to Pinecone: {str(e)}")
 
-    def index_texts(self, file_path: str, metadata: Metadata) -> int:
-        try:
-            self.validate_pdf(file_path)
-            self.validate_metadata(metadata)
-            # Use EasyOCR for text extraction
-            paragraphs = self.extract_text_with_easyocr(file_path)
-            if not paragraphs:
-                return 0
-            for paragraph in paragraphs:
-                entities = self.perform_ner(paragraph)
-                print(f"Entities in paragraph: {entities}")
-            embeddings = self.generate_embeddings(paragraphs)
-            self.upsert_to_pinecone(paragraphs, embeddings, metadata)
-            return len(paragraphs)
-        except (PDFProcessingError, MetadataValidationError,
-                EmbeddingGenerationError, PineconeUpsertError) as e:
-            raise e
-        except Exception as e:
-            raise Exception(f"Unexpected error during indexing: {str(e)}")
+    # def index_texts(self, file_path: str, metadata: Metadata) -> int:
+    #     try:
+    #         self.validate_pdf(file_path)
+    #         self.validate_metadata(metadata)
+    #         # Use EasyOCR for text extraction
+    #         paragraphs = self.extract_text_with_easyocr(file_path)
+    #         if not paragraphs:
+    #             return 0
+    #         for paragraph in paragraphs:
+    #             entities = self.perform_ner(paragraph)
+    #             print(f"Entities in paragraph: {entities}")
+    #         embeddings = self.generate_embeddings(paragraphs)
+    #         self.upsert_to_pinecone(paragraphs, embeddings, metadata)
+    #         return len(paragraphs)
+    #     except (PDFProcessingError, MetadataValidationError,
+    #             EmbeddingGenerationError, PineconeUpsertError) as e:
+    #         raise e
+    #     except Exception as e:
+    #         raise Exception(f"Unexpected error during indexing: {str(e)}")
 
-    def query_index(self, query, top_k=5):
-        query_embedding = self.generate_embeddings([query])[0]
-        pinecone_index = get_pinecone_index()
-        results = pinecone_index.query(
-            vector=query_embedding, top_k=top_k, include_metadata=True)
-        return results["matches"]
