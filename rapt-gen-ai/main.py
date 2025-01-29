@@ -44,7 +44,7 @@ def sanitize_results(results):
 async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = File(...)):
     # Parse the metadata string into a dictionary
     metadata_dict = json.loads(metadata)
-    
+
     # Convert to your metadata model
     metadata_obj = Metadata(**metadata_dict)
     if 'date_uploaded' not in metadata_dict:
@@ -83,24 +83,6 @@ async def query_index_endpoint(request: ConversationRequest):
 
     return ConversationResponse(response=response, conversation_id=request.conversation_id)
 
-
-# @app.post("/delete_texts/")
-# async def delete_texts_endpoint(text_ids: List[str]):
-#     delete_texts_from_index(text_ids)
-#     return {"deleted_texts": text_ids}
-
-
-# @app.post("/batch_upload_texts/")
-# async def batch_upload_texts_endpoint(metadata_list: List[Metadata], files: List[UploadFile] = File(...)):
-#     pdf_paths = []
-#     for file in files:
-#         pdf_path = f"/tmp/{file.filename}"
-#         with open(pdf_path, "wb") as f:
-#             f.write(await file.read())
-#         pdf_paths.append(pdf_path)
-#     total = batch_upload_texts(
-#         pdf_paths, [metadata.model_dump() for metadata in metadata_list])
-#     return {"batch_uploaded_paragraphs": total}
 
 if __name__ == "__main__":
     import uvicorn

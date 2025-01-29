@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple
 from pydantic import BaseModel, Field
 # Define a class for the Chat Language Model
-from config.config import get_openai_client
+from common.config import get_openai_client
 
 
 client = get_openai_client()

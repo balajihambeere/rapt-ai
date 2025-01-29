@@ -4,7 +4,7 @@ from datetime import datetime
 import time
 import PyPDF2
 from tenacity import retry, stop_after_attempt, wait_exponential
-from config.config import get_openai_client, get_pinecone_index
+from common.config import get_openai_client, get_pinecone_index
 import spacy
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter

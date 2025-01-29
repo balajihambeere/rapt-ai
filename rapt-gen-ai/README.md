@@ -68,3 +68,23 @@ Body:
 metadata: {"key1": "value1", "key2": "value2"}
 file: [Select your file]
 After setting this up, click "Send" to make the request. The
+
+
+```bash
+# # Add other dependencies as needed
+spacy download en_core_web_sm
+
+# spacy  # Replace with your preferred spaCy version
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0.tar.gz
+
+# run the docker file command
+docker build -t rapt-gen-ai
+docker build -t rapt-gen-ai . ; docker run -p 8100:8100 rapt-gen-ai
+```
+
+```bash
+pip install -r requirements-dev.txt
+
+pip install -r requirements.txt
+
+```
