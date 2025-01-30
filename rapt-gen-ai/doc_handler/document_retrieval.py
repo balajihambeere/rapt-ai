@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import List
 from datetime import datetime
 import time
@@ -110,16 +111,20 @@ class DocumentRetrieval:
     def extract_text_with_easyocr(self, file_path: str) -> List[str]:
         """Extract text from PDF using EasyOCR."""
         try:
+            # Explicitly set poppler path - update this path to match your installation
+            poppler_path = r"C:\Program Files\poppler-24.08.0\Library\bin"  # Adjust this path
+            
             paragraphs = []
-            # Convert PDF to images
-            images = convert_from_path(file_path, dpi=300)
+            # Convert PDF to images with explicit poppler path
+            images = convert_from_path(
+                file_path,
+                dpi=300,
+                poppler_path=poppler_path
+            )
 
             for image in images:
-                # Convert PIL image to numpy array (required by EasyOCR)
                 image_np = np.array(image)
-                # Perform OCR on the image
                 results = self.reader.readtext(image_np)
-                # Extract text from OCR results
                 page_text = " ".join([result[1] for result in results])
                 if page_text:
                     page_paragraphs = [p.strip() for p in page_text.split('\n\n') if p.strip()]
