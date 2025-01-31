@@ -86,5 +86,4 @@ docker build -t rapt-gen-ai . ; docker run -p 8100:8100 rapt-gen-ai
 pip install -r requirements-dev.txt
 
 pip install -r requirements.txt
-
 ```
