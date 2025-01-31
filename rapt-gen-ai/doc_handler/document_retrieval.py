@@ -13,6 +13,7 @@ from pdf2image import convert_from_path
 import numpy as np
 import concurrent.futures
 import easyocr
+import pypdfium2
 
 from doc_handler.exceptions import EmbeddingGenerationError, MetadataValidationError, PDFProcessingError, PineconeUpsertError
 from doc_handler.models import IndexingResult
@@ -109,30 +110,30 @@ class DocumentRetrieval:
     #         raise PDFProcessingError(f"Error extracting text from PDF: {str(e)}")
 
     def extract_text_with_easyocr(self, file_path: str) -> List[str]:
-        """Extract text from PDF using EasyOCR."""
+        """Extract text from PDF using EasyOCR, replacing Poppler with pdfium + Pillow."""
         try:
-            # Explicitly set poppler path - update this path to match your installation
-            poppler_path = r"C:\Program Files\poppler-24.08.0\Library\bin"  # Adjust this path
-            
             paragraphs = []
-            # Convert PDF to images with explicit poppler path
-            images = convert_from_path(
-                file_path,
-                dpi=300,
-                poppler_path=poppler_path
-            )
+            pdf_document = pypdfium2.PdfDocument(file_path)  # Load PDF
 
-            for image in images:
+            for page_number in range(len(pdf_document)):
+                page = pdf_document[page_number]  # Get page
+                bitmap = page.render(scale=3).to_numpy()  # Convert to NumPy array
+                
+                # Convert to Pillow image (PIL) for further processing
+                image = Image.fromarray(bitmap)
+
+                # Convert to NumPy array for EasyOCR
                 image_np = np.array(image)
                 results = self.reader.readtext(image_np)
                 page_text = " ".join([result[1] for result in results])
+
                 if page_text:
                     page_paragraphs = [p.strip() for p in page_text.split('\n\n') if p.strip()]
                     paragraphs.extend(page_paragraphs)
 
             return paragraphs
         except Exception as e:
-            raise PDFProcessingError(f"Error extracting text from PDF using EasyOCR: {str(e)}")
+            raise Exception(f"Error extracting text from PDF using EasyOCR: {str(e)}")
             
     def process_image_with_ocr(self, image: Image) -> List[str]:
         """Process a single image with OCR."""
