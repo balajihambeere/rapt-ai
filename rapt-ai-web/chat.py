@@ -19,7 +19,7 @@ def get_bot_response(user_input):
         "conversation_id": st.session_state['conversation_id']
     }
     response = requests.post(
-        "http://127.0.0.1:8000/query_index", json=payload)
+        "http://127.0.0.1:8100/query_index", json=payload)
     if response.status_code == 200:
         data = response.json()
         bot_response = data['response']
