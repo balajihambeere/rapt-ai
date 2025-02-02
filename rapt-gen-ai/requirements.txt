@@ -1,0 +1,26 @@
+fastapi
+openai
+uvicorn
+pydantic
+numpy
+tenacity
+pytesseract
+Pillow
+pdf2image
+pinecone-client>=2.2.1
+PyPDF2>=3.0.0
+python-dotenv>=1.0.0
+pytest>=7.3.1
+pytest-cov>=4.1.0
+spacy>=3.7.2
+python-multipart
+easyocr
+# # Add other dependencies as needed
+# # spacy download en_core_web_sm
+
+# spacy  # Replace with your preferred spaCy version
+# https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0.tar.gz
+
+# run the docker file command
+# docker build -t rapt-gen-ai
+# docker build -t rapt-gen-ai . ; docker run -p 8100:8100 rapt-gen-ai

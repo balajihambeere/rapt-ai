@@ -3,10 +3,12 @@ import pandas as pd
 from io import StringIO
 import requests
 import json
+import os
 
+API_URL = os.getenv('API_URL', 'http://localhost:8100')
 
 def upload_to_api(file, metadata):
-    url = "http://127.0.0.1:8000/index_texts/"
+    url = f"{API_URL}/index_texts/"
 
     # Create the files and data dictionary for the request
     files = {
