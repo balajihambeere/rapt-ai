@@ -1,15 +1,14 @@
+# Install dependencies and dev dependencies
 ```bash
-pip install openai
-pip install pinecone-client
-pip install tqdm
+pip install -r requirements-dev.txt
 
-pip install uvicorn python-dotenv 
-
-pip install PyPDF2
-
-pip install "fastapi[standard]"
+pip install -r requirements.txt
 ```
-
+# Run api
+```bash
+## Run app
+uvicorn main:app --reload --port 8100
+```
 
 ```bash
 /Applications/workplace/gen/rapt-ai/
@@ -20,56 +19,6 @@ pip install "fastapi[standard]"
 └── requirements.txt
 ```
 
-
-# Run post method
-http://localhost:8000/index_texts/
-
-To use Postman to run the selected endpoint, follow these steps:
-
-Open Postman: Launch the Postman application.
-
-### Create a New Request:
-
-Click on the "New" button and select "Request".
-Name your request and save it to a collection if desired.
-Set the Request Type and URL:
-
-Set the request type to POST.
-Enter the URL for your endpoint. If your server is running locally, it might look something like http://localhost:8000/index_texts/.
-Set the Headers:
-
-Click on the "Headers" tab.
-Add a header with the key Content-Type and value multipart/form-data.
-Set the Body:
-
-Click on the "Body" tab.
-Select form-data.
-Add two key-value pairs:
-Key: metadata, Type: Text, Value: JSON string representing the Metadata object.
-Key: file, Type: File, Value: Select the file you want to upload.
-Send the Request:
-
-Click the "Send" button.
-Check the response in the lower part of the Postman window.
-
-
-Example
-Assuming your Metadata object looks like this:
-
-```json
- {"document_id": "doc123", "date_uploaded": "2025-01-19"}
-```
-Your Postman setup should look like this:
-
-URL: http://localhost:8000/index_texts/
-Headers:
-Content-Type: multipart/form-data
-Body:
-metadata: {"key1": "value1", "key2": "value2"}
-file: [Select your file]
-After setting this up, click "Send" to make the request. The
-
-
 ```bash
 # # Add other dependencies as needed
 spacy download en_core_web_sm
@@ -77,14 +26,10 @@ spacy download en_core_web_sm
 # spacy  # Replace with your preferred spaCy version
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0.tar.gz
 
+
+```
 # run the docker file command
+```bash
 docker build -t rapt-gen-ai
 docker build -t rapt-gen-ai . ; docker run -p 8100:8100 rapt-gen-ai
-```
-
-```bash
-pip install -r requirements-dev.txt
-
-pip install -r requirements.txt
-
 ```
