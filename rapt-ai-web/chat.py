@@ -1,7 +1,9 @@
 import streamlit as st
 import requests
 import uuid
+import os
 
+API_URL = os.getenv('API_URL', 'http://localhost:8100')
 
 # Initialize session state variables
 if 'conversation_id' not in st.session_state:
@@ -19,7 +21,7 @@ def get_bot_response(user_input):
         "conversation_id": st.session_state['conversation_id']
     }
     response = requests.post(
-        "http://127.0.0.1:8100/query_index", json=payload)
+        f"{API_URL}/query_index", json=payload)
     if response.status_code == 200:
         data = response.json()
         bot_response = data['response']

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../rapt-gen-ai
+      dockerfile: Dockerfile.api
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    
+  streamlit:
+    build:
+      context: ../rapt-ai-web
+      dockerfile: Dockerfile.web
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://backend:8100
+    depends_on:
+      - backend
+    volumes:
+      - ./rapt-ai-web:/app/data
+    restart: unless-stopped
