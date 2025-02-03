@@ -32,3 +32,7 @@ npm-debug.log*
 .Spotlight-V100
 .Trashes
 Thumbs.db
+
+test.db
+
+data

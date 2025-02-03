@@ -1,10 +1,11 @@
 import os
+import sys
 from typing import List
 from datetime import datetime
 import time
 import PyPDF2
 from tenacity import retry, stop_after_attempt, wait_exponential
-from config.config import get_openai_client, get_pinecone_index
+from common.config import get_openai_client, get_pinecone_index
 import spacy
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter
@@ -12,16 +13,18 @@ from pdf2image import convert_from_path
 import numpy as np
 import concurrent.futures
 import easyocr
+import pypdfium2
 
 from doc_handler.exceptions import EmbeddingGenerationError, MetadataValidationError, PDFProcessingError, PineconeUpsertError
 from doc_handler.models import IndexingResult
 from models.metadata import Metadata
 
+
 class DocumentRetrieval:
     def __init__(self):
         self.nlp = spacy.load("en_core_web_sm")
         # Initialize EasyOCR reader
-        self.reader = easyocr.Reader(['en']) 
+        self.reader = easyocr.Reader(['en'])
 
     def index_texts(self, file_path: str, metadata: Metadata) -> int:
         try:
@@ -41,14 +44,14 @@ class DocumentRetrieval:
             raise e
         except Exception as e:
             raise Exception(f"Unexpected error during indexing: {str(e)}")
-        
+
     def query_index(self, query, top_k=5):
         query_embedding = self.generate_embeddings([query])[0]
         pinecone_index = get_pinecone_index()
         results = pinecone_index.query(
             vector=query_embedding, top_k=top_k, include_metadata=True)
-        return results["matches"]    
-    
+        return results["matches"]
+
     def validate_pdf(self, file_path: str) -> None:
         if not os.path.exists(file_path):
             raise PDFProcessingError(f"File not found: {file_path}")
@@ -84,12 +87,14 @@ class DocumentRetrieval:
                 for page in reader.pages:
                     text = page.extract_text()
                     if text:
-                        page_paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+                        page_paragraphs = [p.strip()
+                                           for p in text.split('\n\n') if p.strip()]
                         paragraphs.extend(page_paragraphs)
 
                 return paragraphs
         except Exception as e:
-            raise PDFProcessingError(f"Error extracting text from PDF: {str(e)}")
+            raise PDFProcessingError(
+                f"Error extracting text from PDF: {str(e)}")
 
     # def extract_text_with_ocr(self, file_path: str) -> List[str]:
     #     try:
@@ -108,27 +113,34 @@ class DocumentRetrieval:
     #         raise PDFProcessingError(f"Error extracting text from PDF: {str(e)}")
 
     def extract_text_with_easyocr(self, file_path: str) -> List[str]:
-        """Extract text from PDF using EasyOCR."""
+        """Extract text from PDF using EasyOCR, replacing Poppler with pdfium + Pillow."""
         try:
             paragraphs = []
-            # Convert PDF to images
-            images = convert_from_path(file_path, dpi=300)
+            pdf_document = pypdfium2.PdfDocument(file_path)  # Load PDF
 
-            for image in images:
-                # Convert PIL image to numpy array (required by EasyOCR)
+            for page_number in range(len(pdf_document)):
+                page = pdf_document[page_number]  # Get page
+                # Convert to NumPy array
+                bitmap = page.render(scale=3).to_numpy()
+
+                # Convert to Pillow image (PIL) for further processing
+                image = Image.fromarray(bitmap)
+
+                # Convert to NumPy array for EasyOCR
                 image_np = np.array(image)
-                # Perform OCR on the image
                 results = self.reader.readtext(image_np)
-                # Extract text from OCR results
                 page_text = " ".join([result[1] for result in results])
+
                 if page_text:
-                    page_paragraphs = [p.strip() for p in page_text.split('\n\n') if p.strip()]
+                    page_paragraphs = [p.strip()
+                                       for p in page_text.split('\n\n') if p.strip()]
                     paragraphs.extend(page_paragraphs)
 
             return paragraphs
         except Exception as e:
-            raise PDFProcessingError(f"Error extracting text from PDF using EasyOCR: {str(e)}")
-            
+            raise Exception(
+                f"Error extracting text from PDF using EasyOCR: {str(e)}")
+
     def process_image_with_ocr(self, image: Image) -> List[str]:
         """Process a single image with OCR."""
         try:
@@ -144,7 +156,8 @@ class DocumentRetrieval:
             return []
 
     def convert_pdf_page_to_image(self, file_path: str, page_num: int) -> Image:
-        images = convert_from_path(file_path, first_page=page_num+1, last_page=page_num+1, dpi=300)
+        images = convert_from_path(
+            file_path, first_page=page_num+1, last_page=page_num+1, dpi=300)
         return images[0]
 
     def perform_ner(self, text: str) -> List[str]:
@@ -168,7 +181,8 @@ class DocumentRetrieval:
                 embeddings.extend(batch_embeddings)
             return embeddings
         except Exception as e:
-            raise EmbeddingGenerationError(f"Error generating embeddings: {str(e)}")
+            raise EmbeddingGenerationError(
+                f"Error generating embeddings: {str(e)}")
 
     def validate_metadata(self, metadata: Metadata) -> None:
         if not metadata['document_id']:
@@ -219,4 +233,3 @@ class DocumentRetrieval:
     #         raise e
     #     except Exception as e:
     #         raise Exception(f"Unexpected error during indexing: {str(e)}")
-

@@ -3,7 +3,7 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ../rapt-gen-ai
+      context: ../api
       dockerfile: Dockerfile.api
     ports:
       - "8100:8100"
@@ -16,7 +16,7 @@ services:
     
   streamlit:
     build:
-      context: ../rapt-ai-web
+      context: ../chat
       dockerfile: Dockerfile.web
     ports:
       - "8501:8501"
@@ -25,5 +25,5 @@ services:
     depends_on:
       - backend
     volumes:
-      - ./rapt-ai-web:/app/data
+      - ./chat:/app/data
     restart: unless-stopped
