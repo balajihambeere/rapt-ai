@@ -8,7 +8,7 @@ from database import Usage, create_usage
 client = get_openai_client()
 
 
-class OpenAIChatLLMModel(BaseModel):
+class ChatLLMModel(BaseModel):
     model: str = 'gpt-4o'  # Default model to use
     temperature: float = 0.0  # Default temperature for generating responses
 

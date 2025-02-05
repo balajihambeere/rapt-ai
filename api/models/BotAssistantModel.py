@@ -10,8 +10,8 @@ PROMPT_TEMPLATE = """
 Today is {today}. Use the provided context to answer the user's question accurately. Ensure that key details such as name, date of birth, passport number, and place of birth are considered when relevant.
 
 [START]
-## Conversation History:
-{conversation_history}
+## Query History:
+{query_history}
 
 ## User Query:
 {user_input}
@@ -33,10 +33,11 @@ Today is {today}. Use the provided context to answer the user's question accurat
 """
 
 
-class RagBotModel(BaseModel):
+class BotAssistantModel(BaseModel):
     llm: Any
     prompt_template: str = PROMPT_TEMPLATE
-    conversation_history: List[Tuple[str, str]] = []  # Stores (user input, AI response)
+    # Stores (user input, AI response)
+    query_history: List[Tuple[str, str]] = []
     contexts: List[Dict[str, Any]] = []
     verbose: bool = False
     threshold: float = 0.5
@@ -52,7 +53,8 @@ class RagBotModel(BaseModel):
         matches = document_retrieval.query_index(query)
 
         if matches:
-            top_contexts = [match["metadata"]["text"] for match in matches if match["score"] >= self.threshold]
+            top_contexts = [match["metadata"]["text"]
+                            for match in matches if match["score"] >= self.threshold]
             context_score = matches[0]["score"]
             context_thought = "The retrieved context has relevant details about the user."
         else:
@@ -60,15 +62,16 @@ class RagBotModel(BaseModel):
             context_score = 0
             context_thought = "No relevant context was found."
 
-        # Construct conversation history
-        formatted_conversation = "\n".join(
-            [f"User: {user}\nAssistant: {response}" for user, response in self.conversation_history[-5:]]
+        # Construct query history
+        formatted_query = "\n".join(
+            [f"User: {user}\nAssistant: {response}" for user,
+                response in self.query_history[-5:]]
         )  # Keeps last 5 interactions
 
         # Prepare prompt with structured context extraction logic
         prompt = self.prompt_template.format(
             today=datetime.date.today(),
-            conversation_history=formatted_conversation if formatted_conversation else "No previous context available.",
+            query_history=formatted_query if formatted_query else "No previous context available.",
             user_input=query,
             context="\n".join(top_contexts),
             context_score=context_score,
@@ -79,8 +82,7 @@ class RagBotModel(BaseModel):
         # Generate response
         response = self.llm.generate(prompt, stop=["[END]"])
 
-        # Maintain conversation history
-        self.conversation_history.append((query, response))
+        # Maintain query history
+        self.query_history.append((query, response))
 
         return response
-

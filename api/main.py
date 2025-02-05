@@ -1,81 +1,21 @@
-import io
+import os
+import json
 import uuid
-from pydantic import BaseModel
-from fastapi import Depends, FastAPI, Query, UploadFile, File, Form
-
+from datetime import datetime
+from fastapi import FastAPI, UploadFile, File, Form
+from common.utils import convert_to_pdf
 from database import lifespan
 from models.metadata import Metadata
-import json
-import numpy as np
-from models.OpenAIChatLLMModel import OpenAIChatLLMModel
-from models.RagBotModel import RagBotModel
-from doc_handler.document_retrieval import DocumentRetrieval  # Add this import
-import os  # Add this import
-from datetime import datetime  # Add this import
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from PIL import Image
+from models.ChatLLMModel import ChatLLMModel
+from models.BotAssistantModel import BotAssistantModel
+from doc_handler.document_retrieval import DocumentRetrieval
 
+
+from models.query_model import QueryRequest, QueryResponse
 
 app = FastAPI(lifespan=lifespan)
 
-conversations = {}
-
-
-class ConversationRequest(BaseModel):
-    text: str
-    temperature: float = 0.1
-    threshold: float = 0.3
-    namespace: str = "default"
-    conversation_id: str = None
-
-
-class ConversationResponse(BaseModel):
-    response: str
-    conversation_id: str
-
-
-def sanitize_results(results):
-    return [
-        {
-            "id": result["id"],
-            "metadata": result["metadata"],
-            "score": result["score"]
-        }
-        for result in results
-    ]
-
-
-def convert_to_pdf(file: UploadFile, pdf_path: str):
-    """Convert non-PDF files to PDF format."""
-    print(f"Converting {file.filename} to PDF")
-
-    # Read the file content into memory
-    file_content = file.file.read()
-
-    if file.filename.lower().endswith(('.jpeg', '.jpg', '.png')):
-        print("Converting image to PDF")
-        # Use BytesIO to handle the file content in memory
-        image = Image.open(io.BytesIO(file_content))
-        image.save(pdf_path, "PDF", resolution=100.0)
-
-    elif file.content_type.startswith('image/'):
-        # Reset file pointer since we read it above
-        image = Image.open(io.BytesIO(file_content))
-        image.save(pdf_path, "PDF", resolution=100.0)
-
-    elif file.content_type == 'text/plain':
-        c = canvas.Canvas(pdf_path, pagesize=letter)
-        # Decode the file content we read earlier
-        text = file_content.decode('utf-8')
-        c.drawString(100, 750, text)
-        c.save()
-
-    else:
-        raise ValueError("Unsupported file type for conversion to PDF")
-
-    # Reset the file pointer for any subsequent operations
-    file.file.seek(0)
+queries = {}
 
 
 @app.post("/index_texts/")
@@ -107,48 +47,38 @@ async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = Fil
 
 
 @app.post("/query_index/")
-async def query_index_endpoint(request: ConversationRequest) -> ConversationResponse:
+async def query_index_endpoint(request: QueryRequest) -> QueryResponse:
     """
-    Handles user queries, maintains conversation context across multiple interactions.
+    Handles user queries, maintains query context across multiple interactions.
     """
     message = request.text
     temperature = request.temperature
     threshold = request.threshold
 
-    # Generate a new conversation ID if not provided
-    if not request.conversation_id:
-        request.conversation_id = str(uuid.uuid4())
+    # Generate a new query ID if not provided
+    if not request.query_id:
+        request.query_id = str(uuid.uuid4())
 
-    # Initialize a new conversation if it doesn't exist
-    if request.conversation_id not in conversations:
-        conversations[request.conversation_id] = RagBotModel(
-            llm=OpenAIChatLLMModel(
+    # Initialize a new query if it doesn't exist
+    if request.query_id not in queries:
+        queries[request.query_id] = BotAssistantModel(
+            llm=ChatLLMModel(
                 temperature=temperature, model="gpt-4o"
             ),
             verbose=True,
             threshold=threshold,
         )
 
-    print(f"Conversation ID: {request.conversation_id}")
-    print(f"Conversations: {conversations.keys()}")
+    print(f"Query ID: {request.query_id}")
+    print(f"Queries: {queries.keys()}")
 
-    # Fetch the bot instance for the given conversation
-    bot = conversations[request.conversation_id]
+    # Fetch the bot instance for the given query
+    bot = queries[request.query_id]
 
     # Generate response asynchronously
     response = bot.run(message)
 
-    return ConversationResponse(response=response, conversation_id=request.conversation_id)
-
-
-# @app.get("/usages/")
-# def read_usages(
-#     session: SessionDep,
-#     offset: int = 0,
-#     limit: Annotated[int, Query(le=100)] = 100,
-# ) -> list[Usage]:
-#     usages = session.exec(np.select(Usage).offset(offset).limit(limit)).all()
-#     return usages
+    return QueryResponse(response=response, query_id=request.query_id)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import os
 
 API_URL = os.getenv('API_URL', 'http://localhost:8100')
 
+
 def upload_to_api(file, metadata):
     url = f"{API_URL}/index_texts/"
 
@@ -56,18 +57,3 @@ if uploaded_file is not None:
             else:
                 st.success("Upload successful!")
                 st.json(result)
-
-    # Display file preview
-    # st.subheader("File Preview")
-    # try:
-    #     # For CSV files
-    #     if uploaded_file.name.endswith('.csv'):
-    #         dataframe = pd.read_csv(uploaded_file)
-    #         st.write(dataframe)
-    #     # For text files
-    #     else:
-    #         stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-    #         string_data = stringio.read()
-    #         st.text(string_data)
-    # except Exception as e:
-    #     st.error(f"Error previewing file: {str(e)}")
