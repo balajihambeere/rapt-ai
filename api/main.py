@@ -6,9 +6,9 @@ from fastapi import FastAPI, UploadFile, File, Form
 from common.utils import convert_to_pdf
 from database import lifespan
 from models.metadata import Metadata
-from models.ChatLLMModel import ChatLLMModel
-from models.BotAssistantModel import BotAssistantModel
-from doc_handler.document_retrieval import DocumentRetrieval
+from models.chat_llm import ChatLLM
+from models.bot_assistant import BotAssistant
+from document_handler.document_retrieval import DocumentRetrieval
 
 
 from models.query_model import QueryRequest, QueryResponse
@@ -61,8 +61,8 @@ async def query_index_endpoint(request: QueryRequest) -> QueryResponse:
 
     # Initialize a new query if it doesn't exist
     if request.query_id not in queries:
-        queries[request.query_id] = BotAssistantModel(
-            llm=ChatLLMModel(
+        queries[request.query_id] = BotAssistant(
+            llm=ChatLLM(
                 temperature=temperature, model="gpt-4o"
             ),
             verbose=True,

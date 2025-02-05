@@ -1,8 +1,5 @@
 import os
-import sys
 from typing import List
-from datetime import datetime
-import time
 import PyPDF2
 from tenacity import retry, stop_after_attempt, wait_exponential
 from common.config import get_openai_client, get_pinecone_index
@@ -11,12 +8,9 @@ import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter
 from pdf2image import convert_from_path
 import numpy as np
-import concurrent.futures
 import easyocr
 import pypdfium2
-
-from doc_handler.exceptions import EmbeddingGenerationError, MetadataValidationError, PDFProcessingError, PineconeUpsertError
-from doc_handler.models import IndexingResult
+from document_handler.exceptions import EmbeddingGenerationError, MetadataValidationError, PDFProcessingError, PineconeUpsertError
 from models.metadata import Metadata
 
 

@@ -1,6 +1,5 @@
-from typing import List, Dict, Tuple
+from typing import List
 from pydantic import BaseModel, Field
-# Define a class for the Chat Language Model
 from common.config import get_openai_client
 from database import Usage, create_usage
 
@@ -8,7 +7,7 @@ from database import Usage, create_usage
 client = get_openai_client()
 
 
-class ChatLLMModel(BaseModel):
+class ChatLLM(BaseModel):
     model: str = 'gpt-4o'  # Default model to use
     temperature: float = 0.0  # Default temperature for generating responses
 

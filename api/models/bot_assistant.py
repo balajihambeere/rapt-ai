@@ -1,9 +1,7 @@
-from pydantic import BaseModel
-from typing import Dict, Optional, Any, List, Tuple
 import datetime
-
-from doc_handler.document_retrieval import DocumentRetrieval
-
+from pydantic import BaseModel
+from typing import Dict, Any, List, Tuple
+from document_handler.document_retrieval import DocumentRetrieval
 
 # Updated Prompt Template for Context-Aware RAG Bot
 PROMPT_TEMPLATE = """
@@ -33,7 +31,7 @@ Today is {today}. Use the provided context to answer the user's question accurat
 """
 
 
-class BotAssistantModel(BaseModel):
+class BotAssistant(BaseModel):
     llm: Any
     prompt_template: str = PROMPT_TEMPLATE
     # Stores (user input, AI response)
