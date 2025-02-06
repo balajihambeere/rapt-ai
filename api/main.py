@@ -3,6 +3,7 @@ import uuid
 from pydantic import BaseModel
 from fastapi import Depends, FastAPI, Query, UploadFile, File, Form
 
+from models.CrewRAGBotModel import CrewRAGBotModel
 from database import lifespan
 from models.metadata import Metadata
 import json
@@ -108,34 +109,20 @@ async def index_texts_endpoint(metadata: str = Form(...), file: UploadFile = Fil
 
 @app.post("/query_index/")
 async def query_index_endpoint(request: ConversationRequest) -> ConversationResponse:
-    """
-    Handles user queries, maintains conversation context across multiple interactions.
-    """
+    """Handles user queries using CrewAI-enhanced RAG model."""
     message = request.text
-    temperature = request.temperature
-    threshold = request.threshold
 
-    # Generate a new conversation ID if not provided
+    # Generate new conversation ID if not provided
     if not request.conversation_id:
         request.conversation_id = str(uuid.uuid4())
 
-    # Initialize a new conversation if it doesn't exist
+    # Initialize conversation if not existing
     if request.conversation_id not in conversations:
-        conversations[request.conversation_id] = RagBotModel(
-            llm=OpenAIChatLLMModel(
-                temperature=temperature, model="gpt-4o"
-            ),
-            verbose=True,
-            threshold=threshold,
-        )
+        conversations[request.conversation_id] = CrewRAGBotModel()
 
-    print(f"Conversation ID: {request.conversation_id}")
-    print(f"Conversations: {conversations.keys()}")
-
-    # Fetch the bot instance for the given conversation
     bot = conversations[request.conversation_id]
-
-    # Generate response asynchronously
+    
+    # Generate response using CrewAI pipeline
     response = bot.run(message)
 
     return ConversationResponse(response=response, conversation_id=request.conversation_id)

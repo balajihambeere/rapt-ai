@@ -16,3 +16,4 @@ easyocr
 reportlab
 sqlmodel
 pypdfium2
+chroma-hnswlib>=0.7.0
