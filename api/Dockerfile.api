@@ -14,11 +14,11 @@ WORKDIR /app
 # Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install pdf2image Pillow --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip
 
-# Install the spaCy model
-RUN python -m spacy download en_core_web_sm
+RUN pip install --upgrade pip setuptools wheel
+
+RUN pip install -r requirements.txt
 
 # Copy the rest of the application code
 COPY . .
